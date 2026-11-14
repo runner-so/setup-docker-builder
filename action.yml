@@ -1,0 +1,24 @@
+# runner-so/setup-docker-builder (RUN-513, ADR 0046 §5): published from this
+# folder as its own repo. Runs BuildKit on a local unix socket with its state
+# on a sticky disk keyed docker-layer-cache/<cache-key>, and makes it the
+# current buildx builder and the job's BUILDX_BUILDER (Docker 29's plain
+# docker build ignores the current builder): docker build, docker buildx
+# build, docker/build-push-action and bake use it, and RUN --mount=type=cache directories persist with the layers. The
+# control plane commits the disk at the job's end only on a trusted run (a
+# push or workflow_dispatch on the default branch, or a schedule) whose job
+# succeeded; the last commit wins. BuildKit drops layers unused for 8 days.
+# Use it instead of docker/setup-buildx-action, which would switch builders.
+name: Setup Docker builder
+description: A Docker builder whose layer cache persists across jobs on a sticky disk.
+inputs:
+  cache-key:
+    description: The Docker layer cache's name in this repository, e.g. the image's.
+    required: true
+outputs:
+  name:
+    description: The builder's name, for docker/build-push-action's builder input.
+runs:
+  using: node24
+  main: main.js
+  post: post.js
+  post-if: always()
